@@ -1,0 +1,70 @@
+#!/bin/bash
+cd ${0%/*} || exit 1    # run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# costum functions
+function convert2bc {
+	sed -E 's/([+-]?[0-9.]+)[eE]\+?(-?)([0-9]+)/\1*10^\2\3/g' <<<"$1"
+}
+
+m4 ./mesh/*.m4 > ./system/blockMeshDict
+
+cp ./geom/*.stl ./constant/triSurface/
+runApplication blockMesh
+
+runApplication surfaceFeatureExtract
+
+runApplication decomposePar
+
+runParallel snappyHexMesh -overwrite
+
+runParallel createBaffles -overwrite # if snapping is false
+runParallel topoSet # ***
+
+
+runParallel dsmcInitialisePlus
+#runApplication dsmcInitialisePlus
+i=$(ls -av log.dsmcFoamPlus.*| tail -1 | grep -o -E '[0-9]+')
+i=$((i+0))
+
+actualTime=0.0
+finalTime=$(convert2bc $(grep endTime system/controlDict | grep -v "endTime;" | sed 's/;//' | tr -s " " | cut -d" " -f2))
+
+echo "Actual Time is " $actualTime". Final time is set to " $finalTime"."
+echo echo $actualTime"<"$finalTime "is true:" $(echo $actualTime"<"$finalTime | bc)
+
+
+while (( $(echo $actualTime"<"$finalTime | bc -l) )) ;do
+	echo "Start simulation"
+	runParallel `getApplication`
+	#runApplication `getApplication`
+	mv log.dsmcFoamPlus log.dsmcFoamPlus.$i
+	actualTime=$( convert2bc $(foamListTimes -processor -latestTime))
+	finalTime=$( convert2bc $(grep endTime system/controlDict | grep -v "endTime;" | sed 's/;//' | tr -s " " | cut -d" " -f2))
+	echo $actualTime"<"$finalTime
+	echo $actualTime"<"$finalTime | bc -l
+
+	if ( grep "FOAM parallel run exiting" log.dsmcFoamPlusIAP.$i > /dev/null || grep "Foam::error::" log.dsmcFoamPlusIAP.$i > /dev/null); then
+		echo "Application dsmcFoamPlusIAP stopped with an error. Please check."
+		break
+	fi
+
+	((i++))
+done
+
+runApplication reconstructParMesh -constant
+runApplication reconstructPar -withZero
+touch foam.foam
+
+for p in processor*; do
+	touch ./$p/$p.foam
+done
+
+
+touch foam.foam
+
+#echo "The simulation is now running, its progress can be viewed by typing 'tail -f log.dsmcFOAMPlusIAP' and 'gnuplot monitor'. Once steady state is achieved, the resetAtOutput option(s) in system/fieldPropertiesDict should be changed to 'off' to begin the averaging process." &
+
+# ----------------------------------------------------------------- end-of-file

@@ -1,0 +1,7 @@
+wallShearStressDsmc.C
+dsmcMachNumber.C
+dsmcGradRho.C
+dsmcMassFlowRate.C
+dsmcStatistics.C
+
+LIB = $(FOAM_USER_LIBBIN)/libUserDsmcFoam

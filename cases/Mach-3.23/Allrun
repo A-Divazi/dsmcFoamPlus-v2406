@@ -1,0 +1,57 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+#------------------------------------------------------------------------------
+# Parallel run. The rank count is whatever system/decomposeParDict says
+# (numberOfSubdomains) — nothing is hard-coded here.
+#   ./Allrun              # use the dictionary as it is
+#   NP=8 ./Allrun         # one-off override: NP is written into the dictionary
+#
+# The script is self-contained (sources the v2406 environment when needed), so
+# it also works when started from the monitor GUI or a plain shell.
+#------------------------------------------------------------------------------
+
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
+then
+    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
+    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+application=$(getApplication)
+
+# explicit override only
+if [ -n "${NP:-}" ]
+then
+    foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict
+fi
+
+nProcs=$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)
+case "$nProcs" in
+    ''|*[!0-9]*)
+        echo "ERROR: numberOfSubdomains='$nProcs' in system/decomposeParDict"
+        exit 1
+        ;;
+esac
+
+echo "=== $PWD : $(basename "$application") on $nProcs ranks (decomposeParDict) ==="
+if [ "$nProcs" -gt "$(nproc)" ]
+then
+    echo "WARNING: $nProcs ranks on $(nproc) cores — oversubscribed"
+fi
+
+rm -f log.*
+rm -rf processor*
+
+runApplication blockMesh
+runApplication decomposePar -force
+runParallel -np "$nProcs" dsmcInitialisePlus
+runParallel -np "$nProcs" "$application"
+
+# volume fields only (reconstructing every parcel time is slow)
+runApplication reconstructPar -no-lagrangian      # all written times
+
+touch "${PWD##*/}.foam"
+echo "=== done ==="

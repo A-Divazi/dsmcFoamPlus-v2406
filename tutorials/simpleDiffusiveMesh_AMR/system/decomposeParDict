@@ -1,0 +1,73 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.7.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      decomposeParDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+numberOfSubdomains 40;
+
+//- Keep all of faceSet on a single processor. This puts all cells
+//  connected with a point, edge or face on the same processor.
+//  (just having face connected cells might not guarantee a balanced
+//  decomposition)
+// The processor can be -1 (the decompositionMethod chooses the processor
+// for a good load balance) or explicitly provided (upsets balance).
+
+//constraints
+//{
+// keepCyclicAtOnePatch
+// {
+//     type    singleProcessorFaceSets;
+//     sets
+//     (
+//         (baffle1   -1)
+//     );
+// }
+//}
+//- Force AMI to be on single processor. Can cause imbalance with some decomposers.
+
+
+
+method          scotch;
+
+
+simpleCoeffs
+{
+    n               ( 2 2 1);
+    delta           0.001;
+}
+
+hierarchicalCoeffs
+{
+    n               ( 1 1 1 );
+    delta           0.001;
+    order           xyz;
+}
+
+metisCoeffs
+{
+    processorWeights ( 1 1 1 1 );
+}
+
+manualCoeffs
+{
+    dataFile        "";
+}
+
+distributed     no;
+
+roots           ( );
+
+
+// ************************************************************************* //

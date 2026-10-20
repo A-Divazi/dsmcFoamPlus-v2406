@@ -1,0 +1,21 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+
+# The GUI / a plain shell may start this script without a login environment;
+# the v2406 bashrc needs HOME and USER to resolve WM_PROJECT_USER_DIR.
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
+then
+    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
+    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/CleanFunctions"
+
+cleanCase
+cleanTimeDirectories
+cleanAuxiliary
+
+rm -rf 0 boundaries fieldMeasurements postProcessing processor* dynamicCode \
+       log.* ./*.foam ./*.OpenFOAM constant/polyMesh

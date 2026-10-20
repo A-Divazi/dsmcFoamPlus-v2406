@@ -1,0 +1,86 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.3.0                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      createBafflesDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Sample for creating baffles:
+// - usually converting internal faces into two boundary faces
+// - or converting boundary faces into a boundary face
+//   (internalFacesOnly=false)(though should use really createPatch
+//    to do this)
+//
+// - selection of faces (and orientation) to 'baffle' through:
+//      faceZone:
+//          type        faceZone;
+//          zoneName    f0;
+//      searchableSurface:
+//          type        searchableSurface;
+//          surface     triSurfaceMesh;
+//          name        baffle1D.stl;
+//
+// - specification of patches for baffle sides in one of two modes:
+//      - patchPairs : create two patches of same type, same input
+//      - patches    : create patches separately, full control over what
+//                     to create on what side
+//                     (this mode can also create duplicate (overlapping)
+//                      sets of baffles:
+//                      - internalFacesOnly = false
+//                      - have 4 entries in patches:
+//                          - master
+//                          - slave
+//                          - additional master
+//                          - additional slave)
+
+
+// Whether to convert internal faces only (so leave boundary faces intact).
+// This is only relevant if your face selection type can pick up boundary
+// faces.
+internalFacesOnly true; // false;
+
+// Optionally do not read/convert/write any fields.
+//noFields true;
+
+
+// Baffles to create.
+baffles
+{
+    statGrid
+    {
+        //- Select faces and orientation through a searchableSurface
+        type        searchableSurface;
+        zoneName    cyclic;
+
+        surface     searchableDisk;
+        origin      (0 0 0); // origin
+        normal      (1 0 0);
+        radius      0.0135; //0.0130; // multiply by 10 for realistic gumbel mesh scale
+
+//        surface     searchableCylinder;
+
+//        point1 (-0.00005 0 0);
+//        point2 (0.00005 0 0);
+//        radius 0.013;
+
+
+
+
+        patchPairs
+        {
+            type            cyclic; //cyclicAMI;
+        }
+    }
+}
+
+
+// ************************************************************************* //

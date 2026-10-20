@@ -1,0 +1,45 @@
+#!/bin/bash
+cd "${0%/*}" || exit                                # Run from this directory
+. ${WM_PROJECT_DIR:?}/bin/tools/RunFunctions        # Tutorial run functions
+#------------------------------------------------------------------------------
+
+# BlockMesh for the base mesh
+runApplication blockMesh
+
+# Decompose the case to run on multiple processors
+runApplication $decompDict -s 'for_sHM' decomposePar
+
+
+runParallel $decompDict -s "snapped" snappyHexMesh -overwrite
+runParallel $decompDict -s "snapped" checkMesh -writeFields '(nonOrthoAngle)' -constant
+runParallel $decompDict topoSet
+
+
+# --- For parallel running: set the 0 folder ---
+# restore0Dir -processor # this does not work: raises erroro like: "Cannot find patchField entry for procBoundary1to0"
+
+# - workaround to get corrct procBoundary patchField -
+runApplication reconstructParMesh -constant
+rm -rf ./processor*
+
+# Decompose the case to run on multiple processors
+runApplication $decompDict -s 'final' decomposePar
+
+
+
+
+# Initialize the flow field using dsmcInitialise
+runParallel $decompDict -s "final" dsmcInitialisePlus
+
+# run DSMC (first CFD run)
+runParallel $decompDict -s "final" $(getApplication)
+
+# reconstruct timesteps (but no lagrangian-> takes long time)
+#runApplication reconstructPar -no-lagrangian -fields 'refineField'
+runApplication reconstructPar -latestTime
+ 
+# Create a dummy foam.foam file for processing in Paraview
+touch aSimpleSphere.foam
+
+
+#------------------------------------------------------------------------------

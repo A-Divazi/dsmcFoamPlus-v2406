@@ -1,0 +1,230 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2206                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      binary;
+    arch        "LSB;label=32;scalar=64";
+    class       dictionary;
+    location    "system";
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     dsmcFoamPlus;
+
+startFrom       latestTime;
+
+nTerminalOutputs 1;
+
+startTime       latestTime;
+
+stopAt          endTime;
+
+endTime         2e-04;
+
+deltaT          5e-07;
+
+writeControl    runTime;
+
+writeInterval   2.5e-05; //5e-06;
+
+purgeWrite      10;
+
+writeFormat     binary;
+
+writePrecision  15;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   12;
+
+runTimeModifiable true;
+
+adjustTimeStep  no;
+
+DebugSwitches
+{
+    polyMesh        0;
+    fvMesh          0;
+    decompositionMethod 0;
+    OFstream        0;
+}
+
+/*functions
+{
+    refineFunc
+    {
+        libs            ( "libutilityFunctionObjects.so" );
+        type            coded;
+        name            refineFunction;
+        writeControl    writeTime;
+        executeControl  timeStep;
+        executeInterval 1;
+        codeOptions     #{
+        -I$(LIB_SRC)/finiteVolume/lnInclude \
+        -I$(LIB_SRC)/OpenFOAM/lnInclude
+    #};
+        codeInclude     #{
+        #include "volFieldsFwd.H"
+    #};
+        codeData        #{
+       
+    #};
+        codeRead        #{
+   
+    #};
+        codeExecute     #{
+
+        IOdictionary dynamicMeshDict_
+        (
+            IOobject
+            (
+                "dynamicMeshDict",
+                mesh().time().constant(),
+                mesh(),
+                IOobject::READ_IF_PRESENT,
+                IOobject::NO_WRITE
+            )
+        );
+           
+        // take a fixed diameter instead of reading/averaging each time:
+        const scalar& C0 = 7.837245502911358e-19; // sqrt(2)*pi*4.2e-10**2
+
+
+        // static autoPtr<volScalarField> refineField_;
+        static autoPtr<scalarField> refineField_;
+        // check in into database in order to be visible for the 
+        // refinement
+
+        const scalarField& N = mesh().lookupObject<scalarField>("rhoN_mix");
+        const scalarField& nParticles = mesh().lookupObject<scalarField>("dsmcRhoN_mix");
+        
+        for (label celli = 0; celli < mesh().nCells(); celli++)
+        {
+            refineField_()[celli] = SMALL;
+            // define 400/8= 50 as prox. minimum particle number in cell 
+            if (nParticles[celli] > 400)
+            {
+               refineField_()[celli] = C0 * N[celli] pow(mesh.V()[celli], 1./3.);
+            }
+            else
+            {   
+                if (nParticles[celli] < 50)
+                {
+                    refineField_()[celli] = 0.1; // unrefine mesh for low number of simulation particle
+                }
+                else
+                {
+                    refineField_()[celli] = 0.7; // not unrefine + not refine
+                }
+            }
+        }
+        #};
+        codeWrite       #{
+
+        #};
+    }
+}
+*/
+
+functions
+{
+    refineFunc
+    {
+        libs            ( "libutilityFunctionObjects.so" );
+        type            coded;
+        name            refineFunction;
+        writeControl      writeTime;
+        executeControl  timeStep;
+        codeOptions     #{
+        -I$(LIB_SRC)/finiteVolume/lnInclude \
+        -I$(LIB_SRC)/OpenFOAM/lnInclude \
+        -I$(LIB_SRC)/finiteVolume/lnInclude
+    #};
+        codeInclude     #{
+        #include "volFieldsFwd.H"
+        #include "hexMatcher.H"
+    #};
+        codeData        #{
+       
+    #};
+        codeRead        #{
+   
+    #};
+        codeExecute     #{
+
+        hexMatcher hex;
+
+        static autoPtr<volScalarField> refineField_;
+        // check in into database in order to be visible for the 
+        // refinement 
+        if(!refineField_.valid())
+        {
+        Info << "Creating refineField_" << nl;
+        refineField_.reset
+        (
+            new volScalarField
+            (
+                IOobject
+                (
+                    "refineField",
+                    mesh().time().timeName(),
+                    mesh(),
+                    IOobject::NO_READ,
+                    IOobject::AUTO_WRITE
+                ),
+            mesh(),
+            dimensionedScalar("refineField", dimless, scalar(0.0))
+            )
+        );
+        }
+
+        // take a fixed diameter instead of reading/averaging each time:
+        const scalar& C0 = 7.837245502911358e-19; // sqrt(2)*pi*4.2e-10**2
+
+        const scalarField& N = mesh().lookupObject<scalarField>("rhoN_mix");
+        const scalarField& nParticles = mesh().lookupObject<scalarField>("dsmcRhoN_mix");
+
+
+           
+        for (label celli = 0; celli < mesh().nCells(); celli++)
+        {
+            refineField_()[celli] = SMALL;
+            // define 400/8= 50 as prox. minimum particle number in cell 
+            if (nParticles[celli] > 400)
+            {
+               refineField_()[celli] = C0 * N[celli]; // / pow(mesh.V()[celli], 1./3.);
+            }
+            else
+            {   
+                if (nParticles[celli] < 50)
+                {
+                    refineField_()[celli] = 0.1; // unrefine mesh for low number of simulation particle
+                }
+                else
+                {
+                    refineField_()[celli] = 0.7; // not unrefine + not refine
+                }
+            }
+        }
+           
+           
+
+
+           
+    #};
+        codeWrite       #{
+
+    #};
+    }
+}
+
+// ************************************************************************* //

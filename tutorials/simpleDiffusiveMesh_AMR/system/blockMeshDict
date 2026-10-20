@@ -1,0 +1,138 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2.0.1                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+
+    root        "";
+    case        "";
+    instance    "";
+    local       "";
+
+    class       dictionary;
+    object      blockMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// General m4 macros
+
+  
+
+
+
+// 3D figures
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// User-defined parameters
+
+scale 0.001;// 1:1
+
+// General parameters
+			// 90. degrees at each side of the x-axis
+
+
+
+
+
+//refine (dn):
+ // 1/10 mm cellsizes 
+
+// Port dimensions
+   // x-dimension stagnation
+ //20     // x-dimension upstream
+    // x-dimension grid
+ //30    // x-dimension downstream
+
+   // y-dimension stagnation
+   // y-dimension grid
+     // y-dimension bracket
+    // y-dimension topstream
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Derived parameters
+
+
+// X-Direction:
+
+
+
+
+// Y-Direction:
+
+
+
+
+// Z-Direction: only for 90 degree quater
+
+
+
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Parametric description
+
+vertices
+(
+    // FRONT:
+    (-12 0 -0)  // Vertex FNT0 = 0 
+    (13 0 -0)  // Vertex FNT1 = 1 
+    (13 18 -0)  // Vertex FNT2 = 2 
+    (-12 18 -0)  // Vertex FNT3 = 3 
+
+
+    // BACK:
+    (-12 0 -18)  // Vertex BCK0 = 4 
+    (13 0 -18)  // Vertex BCK1 = 5 
+    (13 18 -18)  // Vertex BCK2 = 6 
+    (-12 18 -18)  // Vertex BCK3 = 7 
+
+);
+
+
+blocks
+(
+    hex (0 3 2 1 4 7 6 5) dsmcZone1 (18 25 18) simpleGrading (1 1 1)
+);
+
+
+edges
+(
+);
+
+
+patches
+(    
+    symmetry
+        front
+        (
+            (0 1 2 3)
+        )
+    symmetry
+        bottom
+        (
+            (4 5 1 0)
+        )
+
+    patch
+        flow
+        (
+            (4 0 3 7)
+            (5 1 2 6)
+            (7 3 2 6)
+            (5 4 7 6)
+        )
+);
+
+boundary
+(
+);
+mergePatchPairs
+(
+);
+
+// ************************************************************************* //

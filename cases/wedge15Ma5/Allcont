@@ -1,0 +1,31 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+#------------------------------------------------------------------------------
+# Continue from the latest written time, with the rank count of
+# system/decomposeParDict (override once with NP=n ./Allcont).
+#------------------------------------------------------------------------------
+
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
+then
+    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
+    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+application=$(getApplication)
+
+if [ -n "${NP:-}" ]
+then
+    foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict
+fi
+
+nProcs=$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)
+
+rm -f log."$(basename "$application")"
+
+runParallel -np "$nProcs" "$application"
+
+touch "${PWD##*/}.foam"

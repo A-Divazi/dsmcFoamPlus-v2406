@@ -1,0 +1,19 @@
+This repository packages the dsmcFoam+ sources
+(https://igit.iap-kborn.de/staszak/dsmcfoamplus-v2306, branch master,
+commit 9c86522) together with patches that make them build and run on
+OpenFOAM v2406, plus converted cases, scripts and user function objects.
+
+dsmcFoam+ is a set of advanced features copied from the
+OpenFOAM-2.4.0-MNF repository and reworked for OpenFOAM >= v2212.
+Copyright: OpenCFD Ltd. / OpenFOAM Foundation (GPL v3), and the dsmcFoam+
+authors — see
+
+  C. White et al., 2018, Comput. Phys. Commun. 224, 1-21
+      "dsmcFoam+: An OpenFOAM based direct simulation Monte Carlo solver"
+  T. Staszak, 2024, Meccanica
+      "A statistical boundary for 3D rarefied flows through meshes"
+
+The OpenFOAM code and these sources are distributed under the GNU General
+Public License version 3 or later; see the OpenFOAM distribution for the full
+text (COPYING). The patches, cases, scripts and function objects added here
+are provided under the same terms, without warranty.

@@ -1,0 +1,121 @@
+/*---------------------------------------------------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  1.3                                   |
+|   \\  /    A nd           | Web:      http://www.openfoam.org               |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      boundariesDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+dsmcPatchBoundaries
+(
+    boundary
+    {
+        patchBoundaryProperties
+        {
+            patchName                           flow;
+        }
+
+        boundaryModel   dsmcDeletionPatch;
+
+        dsmcDeletionPatchProperties
+        {
+	      allSpecies		yes;
+        }
+    }
+
+    boundary
+    {
+         patchBoundaryProperties
+         {
+             patchName                           bracket;
+         }
+ 
+         boundaryModel   dsmcDiffuseWallPatch;
+ 
+         dsmcDiffuseWallPatchProperties
+         {
+          temperature         300;
+          velocity            (0 0 0);
+         }
+    }
+
+);
+
+dsmcCyclicBoundaries
+(
+    boundary
+    {
+       cyclicBoundaryProperties
+       {
+           patchName                           statGrid_master;
+       }
+
+       boundaryModel   dsmcCyclicForwardScatterStatisticalDiffusivePatch;
+
+       dsmcCyclicForwardScatterStatisticalDiffusivePatchProperties
+       {
+           Tr               0.766;
+           velocity         (0 0 0);
+           temperature      300;
+       }
+    }
+
+    boundary
+    {
+        cyclicBoundaryProperties
+        {
+            patchName                           statGrid_slave;
+        }
+
+       boundaryModel   dsmcCyclicForwardScatterStatisticalDiffusivePatch;
+
+       dsmcCyclicForwardScatterStatisticalDiffusivePatchProperties
+       {
+           Tr               0.766;      
+           velocity         (0 0 0);
+           temperature      300;
+       }
+    }
+);
+    dsmcGeneralBoundaries
+(
+   
+    boundary
+    {
+        generalBoundaryProperties
+        {
+            patchName                           flow;
+        }
+
+        boundaryModel   dsmcFreeStreamInflowPatch;
+
+        dsmcFreeStreamInflowPatchProperties
+        {
+			typeIds						(N2 O2 Ar);
+			translationalTemperature    71.4;
+		    rotationalTemperature       0;
+		    vibrationalTemperature      0;
+            electronicTemperature       0;
+		    velocity                    (677.6 0 0);
+		    numberDensities
+		    {
+                N2          2.0602042581458158e+21;
+                O2          5.526489215603998e+20;
+                Ar          2.4643086638852927e+19;
+		    }
+		}
+    }
+
+);
+
+
+// ************************************************************************* //

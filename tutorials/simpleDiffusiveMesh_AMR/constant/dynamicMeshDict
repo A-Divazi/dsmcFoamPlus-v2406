@@ -1,0 +1,60 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2012                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          dynamicMeshDict;
+}
+
+dynamicFvMesh   dynamicRefineFvMesh;
+
+dynamicRefineFvMeshCoeffs
+{
+// for load balancing
+//enableBalancing true;
+//allowableImbalance 0.10;
+
+// How often to refine
+refineInterval  50; // should be n*writeIntervall/deltaT; n=1,2,..., otherwise simulation yields unreasonable results and/or chrashes
+// Field to be refinement on
+field           refineField;
+
+// Change the value for lowerRefineLevel to have less or more cells refined.
+
+// Refine field between lower..upper
+lowerRefineLevel 1.0; // 
+
+// The upper limit has been set to a very high value to have no upper limit
+upperRefineLevel 1000000;
+
+// If value < unrefineLevel unrefine
+unrefineLevel   0.4;
+
+nBufferLayers   0;
+// Refine cells only up to maxRefinement levels
+// Be sure to change this value if you change the refinement levels in snappyHexMesh
+maxRefinement   4;
+// Stop refinement if maxCells reached
+maxCells        10000000;
+
+correctFluxes
+(
+
+);
+
+// Write the refinement level as a volScalarField
+dumpLevel       true;
+}
+
+
+
+
+// ************************************************************************* //

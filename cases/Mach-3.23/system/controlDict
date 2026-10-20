@@ -1,0 +1,104 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2406                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+application     dsmcFoamPlus;
+
+nTerminalOutputs 1;
+
+startFrom       startTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.02;
+
+deltaT          5e-6;
+
+writeControl    runTime;
+
+writeInterval   1e-3;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+
+writePrecision  10;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+adjustTimeStep  no;
+
+
+libs
+(
+    "libUserDsmcFoam.so"
+);
+
+
+functions
+{
+    //- mass flow through interior cross-section planes (m = integral rho U.n dA)
+    //  dsmcFoam+ has no "momentum" field, the object builds it as rhoM_mix*UMean_mix.
+    //  The CSV is postProcessing/massFlow.csv, read by monitor.py.
+    massFlow1
+    {
+        type            dsmcMassFlowRate;
+
+        patches         (flow);
+        sections        (1.0 2.0);
+        sectionsTol     0.002;
+
+        rhoMField       rhoM_mix;
+        UField          UMean_mix;
+
+        // poll for each newly written time directory (see the class comment)
+        executeControl  timeStep;
+        writeControl    none;
+    }
+
+    //- wall shear stress from the DSMC force density on the walls
+    wallShear1
+    {
+        type            wallShearStressDsmc;
+
+        fDField         fD_mix;
+        tauField        wallShearStress;
+        tauMagField     wallShearStressMag;
+
+        writeControl    writeTime;
+    }
+
+    //- density gradient magnitude (dsmcFoam+ has no gradient output)
+    gradRho1
+    {
+        type            dsmcGradRho;
+
+        rhoField        rhoN_mix;
+        gradField       gradRho;
+        magField        gradRhoMag;
+
+        writeControl    writeTime;
+    }
+}
+
+// ************************************************************************* //

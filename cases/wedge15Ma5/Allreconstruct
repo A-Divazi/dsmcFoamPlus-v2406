@@ -1,0 +1,19 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+#------------------------------------------------------------------------------
+# Reconstruct EVERY written time (not only the latest) — use after stopping a
+# parallel run by hand.  Lagrangian/parcel data is skipped (field data only).
+#------------------------------------------------------------------------------
+
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
+then
+    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
+    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+rm -f log.reconstructPar
+runApplication reconstructPar -no-lagrangian
