@@ -17,5 +17,6 @@ log.*
 *.foam
 __pycache__/
 dynamicCode/
-boundaries/
+/boundaries/
+cases/*/boundaries/
 fieldMeasurements/
