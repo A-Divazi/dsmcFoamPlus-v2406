@@ -15,8 +15,7 @@ cd "$(dirname -- "$0")" || exit 1
 
 if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
 then
-    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
-    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+    . /home/ubuntu/opt/setup-openfoam2406.sh
 fi
 . "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
 
@@ -44,6 +43,9 @@ fi
 
 rm -f log.*
 rm -rf processor*
+
+# a fresh run always starts from startTime (Allcont switches to latestTime)
+foamDictionary -entry startFrom -set startTime system/controlDict
 
 runApplication blockMesh
 runApplication decomposePar -force

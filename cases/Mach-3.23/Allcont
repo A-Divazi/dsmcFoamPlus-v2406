@@ -10,8 +10,7 @@ cd "$(dirname -- "$0")" || exit 1
 
 if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
 then
-    _env="$(dirname -- "$0")/../../scripts/setup-openfoam2406.sh"
-    if [ -f "$_env" ]; then . "$_env"; else . /home/ubuntu/opt/setup-openfoam2406.sh; fi
+    . /home/ubuntu/opt/setup-openfoam2406.sh
 fi
 . "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
 
@@ -21,6 +20,10 @@ if [ -n "${NP:-}" ]
 then
     foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict
 fi
+
+# continue from the latest written time (without this the solver restarts at
+# startTime, i.e. "Continue" would behave like a fresh Run)
+foamDictionary -entry startFrom -set latestTime system/controlDict
 
 nProcs=$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)
 

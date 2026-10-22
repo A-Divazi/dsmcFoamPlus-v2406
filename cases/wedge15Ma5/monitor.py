@@ -374,8 +374,11 @@ class MonitorApp:
         self.thresh_var = tk.StringVar(value=str(self.threshold))
         ttk.Entry(th, textvariable=self.thresh_var, width=8).pack(side='left', padx=4)
         ttk.Button(th, text='Set', command=self.set_threshold).pack(side='left')
-        ttk.Button(left, text='Refresh parameters', command=self.update_params)\
-            .pack(anchor='w', padx=6, pady=(2, 0))
+        rfb = ttk.Frame(left)
+        rfb.pack(anchor='w', padx=6, pady=(2, 0))
+        ttk.Button(rfb, text='Refresh parameters', command=self.update_params).pack(side='left')
+        ttk.Button(rfb, text='Refresh plot', command=self.refresh_plot).pack(side='left', padx=4)
+        ttk.Button(rfb, text='Reset axes', command=self.reset_axes).pack(side='left')
         self.residual_label = tk.StringVar(value='residual: —')
         ttk.Label(left, textvariable=self.residual_label).pack(anchor='w', padx=6, pady=(4, 0))
 
@@ -476,6 +479,17 @@ class MonitorApp:
         except Exception:
             messagebox.showerror('Set threshold', 'Enter a positive number, e.g. 0.01')
 
+    def refresh_plot(self):
+        """Re-read massFlow.csv / log and redraw both graphs immediately."""
+        self._force_plot = True
+        self.refresh()
+        self.status.set('plots refreshed')
+
+    def reset_axes(self):
+        """Forget the automatic axis limits so the next redraw rescales."""
+        self._force_plot = True
+        self.refresh()
+
     def update_params(self):
         self.end_time = read_end_time()   # refresh final flow time too
         p = parse_case_params()
@@ -530,7 +544,9 @@ class MonitorApp:
             self.residual_label.set('residual: %.4g  (threshold %.3g)' % (relative_residual(rows[-1]), self.threshold))
 
         # redraw plot every 0.1% progress / on state changes / on first data
-        redraw = False
+        # (and always when the user presses 'Refresh plot' / 'Reset axes')
+        redraw = getattr(self, '_force_plot', False)
+        self._force_plot = False
         if self.end_time:
             step = PLOT_STEP_FRAC * self.end_time
             if self._last_plot_t is None:
