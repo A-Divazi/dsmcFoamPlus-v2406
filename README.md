@@ -23,6 +23,7 @@ utils/functionObjects/    libUserDsmcFoam: dsmcMassFlowRate, wallShearStressDsmc
 tutorials/                upstream dsmcFoam+ tutorials
                           (simpleSphere, simpleDiffusiveMesh_AMR, statisticalMeshDemos)
 v2406-dsmcFoam-tutorials/ the stock OpenFOAM v2406 dsmcFoam tutorials (reference)
+INSTALL.md                step-by-step installation on a new machine
 cases/Mach-3.23/          Ma 3.23 ramp case, converted to dsmcFoam+ (system, constant,
                           Allrun/Allcont/Allclean/Allreconstruct, monitor.py)
 cases/wedge15Ma5/         Ma 5 15-degree wedge, converted from the v2406 tutorial
