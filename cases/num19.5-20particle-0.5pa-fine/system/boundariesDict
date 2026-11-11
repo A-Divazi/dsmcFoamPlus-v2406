@@ -1,0 +1,123 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2406                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      boundariesDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+//- inflow (free-stream) at patch flow: injects molecules with the
+//  free-stream conditions given below
+dsmcGeneralBoundaries
+(
+    boundary
+    {
+        generalBoundaryProperties
+        {
+            patchName                           flow;
+        }
+
+        boundaryModel   dsmcFreeStreamInflowPatch;
+
+        dsmcFreeStreamInflowPatchProperties
+        {
+            typeIds             (Ar);
+
+            numberDensities
+            {
+                Ar              2.4143e+20;
+            }
+
+            velocity            (736.5 0 0);
+
+            translationalTemperature        150;
+            rotationalTemperature           150;
+            vibrationalTemperature          150;
+            electronicTemperature           150;
+        }
+    }
+);
+
+
+//- every non-symmetry / non-empty poly-patch needs exactly one model
+dsmcPatchBoundaries
+(
+    boundary                                      // outlet / outflow
+    {
+        patchBoundaryProperties
+        {
+            patchName                           flow;
+        }
+
+        boundaryModel   dsmcDeletionPatch;
+
+        dsmcDeletionPatchProperties
+        {
+            allSpecies      yes;
+        }
+    }
+
+    boundary                                      // obstacle (diffuse wall)
+    {
+        patchBoundaryProperties
+        {
+            patchName                           obstacle;
+        }
+
+        boundaryModel   dsmcDiffuseWallPatch;
+
+        dsmcDiffuseWallPatchProperties
+        {
+            temperature     150;
+            velocity        (0 0 0);
+        }
+    }
+
+    boundary                                      // lower-wall-diff
+    {
+        patchBoundaryProperties
+        {
+            patchName                           lower-wall-diff;
+        }
+
+        boundaryModel   dsmcDiffuseWallPatch;
+
+        dsmcDiffuseWallPatchProperties
+        {
+            temperature     150;
+            velocity        (0 0 0);
+        }
+    }
+
+    boundary                                      // upper-wall
+    {
+        patchBoundaryProperties
+        {
+            patchName                           upper-wall;
+        }
+
+        boundaryModel   dsmcDiffuseWallPatch;
+
+        dsmcDiffuseWallPatchProperties
+        {
+            temperature     150;
+            velocity        (0 0 0);
+        }
+    }
+);
+
+
+//- no cyclic (statistical mesh) boundaries in this case
+dsmcCyclicBoundaries
+(
+);
+
+// ************************************************************************* //

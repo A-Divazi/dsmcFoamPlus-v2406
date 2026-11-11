@@ -26,7 +26,10 @@ v2406-dsmcFoam-tutorials/ the stock OpenFOAM v2406 dsmcFoam tutorials (reference
 cases/Mach-3.23/          Ma 3.23 ramp case, converted to dsmcFoam+ (system, constant,
                           Allrun/Allcont/Allclean/Allreconstruct, monitor.py)
 cases/wedge15Ma5/         Ma 5 15-degree wedge, converted from the v2406 tutorial
-scripts/                  setup / build / scotch-compat helpers
+cases/*-fine/             the ramp case at 2, 1, 0.5, 0.1, 0.05 and 0.01 Pa on the
+                          fine mesh, with the time step from the DSMC Setup
+                          Calculator (see "4. Fine-mesh cases" below)
+scripts/                  setup / build / scotch-compat helpers, make-fine-cases.py
 ```
 
 ## 1. Get OpenFOAM v2406
@@ -155,3 +158,42 @@ The dsmcFoam+ sources are GPL v3 (OpenFOAM / OpenCFD Ltd. and the dsmcFoam+
 authors: C. White et al. 2018, T. Staszak 2024). The converted cases,
 scripts and function objects in this repository are provided under the same
 terms.
+
+## 4. Fine-mesh cases (2 Pa ... 0.01 Pa)
+
+`cases/*-fine/` contain the ramp case prepared with the DSMC Setup Calculator
+(`dsmc_calc.py`: `vhs_cross_section`, `mean_free_path`, `mean_thermal_speed`):
+
+    sigma  = pi dref^2 (Tref/T)^(omega-1/2)
+    lambda = 1/(sqrt(2) n sigma)          cbar = sqrt(8 k T / (pi m))
+    tau    = lambda / cbar
+    dt     = min(0.2 tau, 0.3 dx/(U+cbar))        (calculator defaults f1, f2)
+    dx     = (Vdomain/Ncells)^(1/3)
+
+Argon, T = 150 K, U = 736.5 m/s (Mach 3.23), V = 2.6165e-3 m3 (3.5 x 1 x 0.001 m),
+116 000-cell base mesh refined by f in x and y so that dx <= lambda.
+
+| case | P [Pa] | f | cells | dx [m] | dx/lambda | lambda [m] | tau [s] | dt [s] | parcels |
+|---|---|---|---|---|---|---|---|---|---|
+| num20-2pa-fine | 2 | 6 | 4 176 000 | 8.56e-4 | 0.79 | 1.08e-3 | 3.84e-6 | 2.52e-7 | 9.0e6 (2.2/cell, RAM cap) |
+| num20-20particle-1pa-fine | 1 | 4 | 1 856 000 | 1.12e-3 | 0.52 | 2.17e-3 | 7.68e-6 | 3.30e-7 | 9.0e6 (4.8/cell, RAM cap) |
+| num19.5-20particle-0.5pa-fine | 0.5 | 2 | 464 000 | 1.78e-3 | 0.41 | 4.33e-3 | 1.54e-5 | 5.24e-7 | 9.0e6 (19.4/cell, RAM cap) |
+| num19-fine | 0.1 | 1 | 116 000 | 2.83e-3 | 0.13 | 2.17e-2 | 7.68e-5 | 8.32e-7 | 2.32e6 (20/cell) |
+| num18.5-20particle-0.05pa-fine | 0.05 | 1 | 116 000 | 2.83e-3 | 0.07 | 4.33e-2 | 1.54e-4 | 8.32e-7 | 2.32e6 (20/cell) |
+| num18-20particle-0.01pa-fine | 0.01 | 1 | 116 000 | 2.83e-3 | 0.01 | 2.17e-1 | 7.68e-4 | 8.32e-7 | 2.32e6 (20/cell) |
+
+`dt` is the smaller of the collision limit (0.2 tau) and the transit limit
+(0.3 dx/(U+cbar)); on the fine meshes the transit limit dominates. The mesh is
+graded in y, so `dx` is the bulk equivalent cell size used by the calculator
+while the near-wall cells are smaller.
+
+Parcels are 20 per cell where that fits the RAM budget of the very small
+development VM (9e6); for the three refined meshes 20/cell would need 37 M / 84 M
+parcels, so they are capped and the statistics are 2.2 - 19.4 parcels/cell.
+Rebuild the family with
+
+    python3 scripts/make-fine-cases.py            # all
+    python3 scripts/make-fine-cases.py num20-2pa  # one
+
+(this writes system/, constant/dsmcProperties, the runner scripts, monitor.py
+and a README with the calculated values into `<case>-fine`).

@@ -1,0 +1,85 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  2406                                  |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+FoamFile
+{
+    version         2;
+    format          ascii;
+    class           dictionary;
+    object          controlDict;
+}
+
+application     dsmcFoamPlus;
+
+nTerminalOutputs 1;
+
+startFrom       latestTime;
+
+startTime       0;
+
+stopAt          endTime;
+
+endTime         0.02;
+
+deltaT          3.30263e-07;
+
+writeControl    runTime;
+
+writeInterval   0.005;
+
+purgeWrite      6;
+
+writeFormat     ascii;
+
+writePrecision  10;
+
+writeCompression off;
+
+timeFormat      general;
+
+timePrecision   6;
+
+runTimeModifiable true;
+
+adjustTimeStep  no;
+
+libs            ( "libUserDsmcFoam.so" );
+
+functions
+{
+    massFlow1
+    {
+        type            dsmcMassFlowRate;
+        patches         ( flow );
+        sections        ( 1 2 );
+        sectionsTol     0.002;
+        rhoMField       rhoM_mix;
+        UField          UMean_mix;
+        executeControl  timeStep;
+        writeControl    none;
+    }
+    wallShear1
+    {
+        type            wallShearStressDsmc;
+        fDField         fD_mix;
+        tauField        wallShearStress;
+        tauMagField     wallShearStressMag;
+        writeControl    writeTime;
+    }
+    gradRho1
+    {
+        type            dsmcGradRho;
+        rhoField        rhoN_mix;
+        gradField       gradRho;
+        magField        gradRhoMag;
+        writeControl    writeTime;
+    }
+}
+
+
+// ************************************************************************* //

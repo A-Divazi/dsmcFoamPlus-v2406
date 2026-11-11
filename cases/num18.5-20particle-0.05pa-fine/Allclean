@@ -1,0 +1,20 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+# Remove solver output but KEEP 0/ (the initial fields) and the mesh in constant/.
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+# always use the v2406 environment this case was built for, even if the
+# shell that started us has v2606 (or nothing) sourced
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]; then
+    . /home/ubuntu/opt/setup-openfoam2406.sh
+fi
+
+# every numeric time directory except 0 (and not e.g. 0.014.old)
+for d in [0-9]*; do
+    [ -d "$d" ] || continue
+    [[ "$d" =~ ^[0-9]+(\.[0-9]+)?$ ]] || continue
+    [ "$d" = "0" ] && continue
+    rm -rf "$d"
+done
+rm -rf processor* postProcessing dynamicCode log.* .monitor
+echo "cleaned $PWD (0/ and constant/polyMesh kept)"

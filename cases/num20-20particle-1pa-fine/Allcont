@@ -1,0 +1,20 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+# Continue from the latest written time (parallel, ranks from decomposeParDict).
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+# always use the v2406 environment this case was built for, even if the
+# shell that started us has v2606 (or nothing) sourced
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]; then
+    . /home/ubuntu/opt/setup-openfoam2406.sh
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+[ -n "${END:-}" ] && foamDictionary -entry endTime -set "$END" system/controlDict
+[ -n "${NP:-}" ]  && foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict
+nProcs=$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)
+app=$(getApplication)
+foamDictionary -entry startFrom -set latestTime system/controlDict
+rm -f "log.$(basename "$app")"
+runParallel -np "$nProcs" "$app"
+runApplication reconstructPar -no-lagrangian
+echo "=== $PWD continued ==="

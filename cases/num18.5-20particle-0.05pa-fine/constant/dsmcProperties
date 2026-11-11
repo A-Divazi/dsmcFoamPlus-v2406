@@ -1,0 +1,82 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2406                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      dsmcProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// General Properties
+// ~~~~~~~~~~~~~~~~~~
+
+nEquivalentParticles            2.722878e+10;
+
+chargedParticles                false;
+
+adsorption                      false;
+
+
+// Axisymmetric Properties
+// ~~~~~~~~~~~~~~~~~~~~~~~
+
+axisymmetricSimulation          false;
+radialExtentOfDomain            0.03;
+maxRadialWeightingFactor        1000.0;
+
+
+// Collision Partner Selection Model
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+collisionPartnerSelectionModel  noTimeCounter;
+
+
+// Binary Collision Model
+// ~~~~~~~~~~~~~~~~~~~~~~
+
+BinaryCollisionModel            LarsenBorgnakkeVariableHardSphere;
+
+LarsenBorgnakkeVariableHardSphereCoeffs
+{
+    Tref                                    298.15;
+    rotationalRelaxationCollisionNumber       5.0;
+    electronicRelaxationCollisionNumber     500.0;
+}
+
+
+// Molecular species
+// ~~~~~~~~~~~~~~~~~
+
+typeIdList                      (Ar);
+
+moleculeProperties
+{
+    Ar
+    {
+        mass                                    66.3e-27;
+        diameter                                4.17e-10;
+        rotationalDegreesOfFreedom              0;
+        vibrationalModes                        0;
+        omega                                   0.81;
+        alpha                                   1.0;
+        characteristicVibrationalTemperature    ();
+        dissociationTemperature                 ();
+        ionisationTemperature                   0;
+        charDissQuantumLevel                    ();
+        Zref                                    ();
+        referenceTempForZref                    ();
+        charge                                  0;
+        numberOfElectronicLevels                1;
+        electronicEnergyList                    (0);
+        degeneracyList                          (1);
+    }
+}
+
+// ************************************************************************* //
