@@ -1329,9 +1329,9 @@ class MonitorApp:
         if not os.path.isfile(path):
             self.status.set('%s not found in %s' % (script, CASEDIR))
             return
-        if script in SOLVE_SCRIPTS and not os.path.isdir(os.path.join(CASEDIR, '0')):
-            self.status.set('cannot run: no 0/ directory (initial fields missing)')
-            return
+        # dsmcFoam+ cases have no 0/ directory until dsmcInitialisePlus creates
+        # it (fields, parcels, parcel dictionaries); Allrun does that itself, so
+        # a missing 0/ is not a reason to refuse to start.
 
         # the case scripts delete log.* themselves, so keep the monitor's own
         # log of the launched script under .monitor/
