@@ -141,16 +141,15 @@ blockMesh > log.blockMesh && dsmcInitialisePlus && dsmcFoamPlus
 
 The prepared cases are the two converted ones (`cases/Mach-3.23`,
 `cases/wedge15Ma5`) and the six fine-mesh ramp cases
-`cases/num20-2pa-fine`, `num20-20particle-1pa-fine`,
-`num19.5-20particle-0.5pa-fine`, `num19-fine`,
-`num18.5-20particle-0.05pa-fine`, `num18-20particle-0.01pa-fine`
+`cases/ramp-2pa-fine`, `ramp-1pa-fine`, `ramp-0.5pa-fine`, `ramp-0.1pa-fine`,
+`ramp-0.05pa-fine`, `ramp-0.025pa-fine`, `ramp-0.01pa-fine`
 (parameters in §4 of `README.md`).
 
 Each case directory contains `system/`, `constant/dsmcProperties`, the runner
 scripts and `monitor.py` — no mesh, no results.
 
 ```bash
-cd cases/num19-fine            # 0.1 Pa, 116 000 cells, 2.3M parcels
+cd cases/ramp-0.1pa-fine       # 0.1 Pa, 116 000 cells, 2.3M parcels
 ./Allrun                       # blockMesh -> dsmcInitialisePlus -> decomposePar
                                #   -> dsmcFoamPlus (mpirun) -> reconstructPar
 END=2e-3 ./Allrun              # short test run

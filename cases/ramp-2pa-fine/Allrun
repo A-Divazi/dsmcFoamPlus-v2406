@@ -1,0 +1,72 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+#------------------------------------------------------------------------------
+# Parallel AMR run.  Ranks from system/decomposeParDict (NP=n overrides).
+#   ./Allrun            # full endTime from controlDict
+#   END=0.005 ./Allrun  # shorter
+#   NP=4 ./Allrun
+#------------------------------------------------------------------------------
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+# always use the v2406 environment this case was built for, even if the
+# shell that started us has v2606 (or nothing) sourced
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]; then
+    . /home/ubuntu/opt/setup-openfoam2406.sh
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+[ -n "${END:-}" ] && foamDictionary -entry endTime -set "$END" system/controlDict
+[ -n "${NP:-}" ]  && foamDictionary -entry numberOfSubdomains -set "$NP" system/decomposeParDict
+nProcs=$(foamDictionary -entry numberOfSubdomains -value system/decomposeParDict)
+app=$(getApplication)
+
+rm -f log.*
+rm -rf processor*
+
+foamDictionary -entry startFrom -set startTime system/controlDict >/dev/null
+# A mesh produced by the adaptation workflow (adapt_mesh.py / one-shot AMR
+# splitting) already carries cellLevel/refinementHistory: do not overwrite it
+# with blockMesh.
+if [ -f constant/polyMesh/cellLevel ]; then
+    echo "adapted mesh found in constant/polyMesh (cellLevel) - skipping blockMesh"
+else
+    runApplication blockMesh
+fi
+
+# The initial parcels and per-cell fields in 0/ belong to one particular mesh.
+# After a change of the blockMesh resolution they must be regenerated, otherwise
+# decomposePar stops with "Size N is not equal to the expected length M".
+meshCells=$(python3 - "$PWD/constant/polyMesh/owner" <<'PYEOF'
+import re, sys
+s = open(sys.argv[1]).read()
+m = re.search(r'\n(\d+)\s*\n\((.*?)\)\s*\n', s, re.S)
+print(max(int(x) for x in m.group(2).split()) + 1 if m else 0)
+PYEOF
+)
+v0=0
+[ -f 0/V0 ] && v0=$(python3 - "$PWD/0/V0" <<'PYEOF'
+import re, sys
+m = re.search(r'internalField\s+nonuniform\s+List<[\w:]+>\s*\n(\d+)', open(sys.argv[1]).read())
+print(m.group(1) if m else 0)
+PYEOF
+)
+if [ -d 0 ] && [ "$v0" != "0" ] && [ "$v0" != "$meshCells" ]; then
+    echo "0/ was written for ${v0} cells but the mesh has ${meshCells}: re-initialising" >&2
+    rm -rf 0
+fi
+if [ ! -d 0 ]; then
+    # fresh case: dsmcInitialisePlus creates 0/ (fields, parcels, parcel dicts)
+    echo "no 0/ directory - creating it with a serial dsmcInitialisePlus" >&2
+    runApplication dsmcInitialisePlus
+    rm -f log.dsmcInitialisePlus
+fi
+
+runApplication decomposePar -force
+runParallel -np "$nProcs" dsmcInitialisePlus
+runParallel -np "$nProcs" "$app"
+# AMR writes a new mesh per write, and reconstructed meshes have no
+# *ProcAddressing, so reconstructPar can only merge times before the first
+# refinement.  Do not let that failure look like a failed run.
+runApplication reconstructPar -no-lagrangian -newTimes || \
+    echo "note: reconstructPar could not merge the AMR times (data is complete in processor*/)"
+echo "=== $PWD done (endTime $(foamDictionary -entry endTime -value system/controlDict)) ==="

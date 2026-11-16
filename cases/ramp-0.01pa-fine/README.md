@@ -1,4 +1,4 @@
-# num18-20particle-0.01pa-fine - 0.01 Pa on the fine mesh (factor 1)
+# ramp-0.01pa-fine - 0.01 Pa on the fine mesh (factor 1)
 
 Prepared with the DSMC Setup Calculator
 (`/home/ubuntu/Desktop/DSMC-Calculator/dsmc_calc.py`, functions

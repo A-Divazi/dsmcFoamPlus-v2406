@@ -33,7 +33,7 @@ dsmcGeneralBoundaries
 
             numberDensities
             {
-                Ar              2.4143e+19;
+                Ar              4.8286e+19;
             }
 
             velocity            (736.5 0 0);

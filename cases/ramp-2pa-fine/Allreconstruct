@@ -1,0 +1,21 @@
+#!/bin/bash
+cd "$(dirname -- "$0")" || exit 1
+#------------------------------------------------------------------------------
+# Reconstruct EVERY written time (not only the latest) — use after stopping a
+# parallel run by hand.  Lagrangian/parcel data is skipped (field data only).
+#------------------------------------------------------------------------------
+
+: "${HOME:=/home/ubuntu}"; export HOME
+: "${USER:=ubuntu}"; export USER
+
+if [ -z "${WM_PROJECT_DIR:-}" ] || [ "${WM_PROJECT_VERSION:-}" != "v2406" ]
+then
+    . /home/ubuntu/opt/setup-openfoam2406.sh
+fi
+. "${WM_PROJECT_DIR:?}/bin/tools/RunFunctions"
+
+rm -f log.reconstructPar
+# only the times written before the first AMR refinement can be merged (their
+# decomposed meshes still match the decomposed base mesh)
+runApplication reconstructPar -no-lagrangian || \
+    echo "note: reconstructPar could not merge the AMR times (see log.reconstructPar)"

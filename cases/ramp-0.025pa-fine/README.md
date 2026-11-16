@@ -1,4 +1,4 @@
-# num19-fine - 0.1 Pa on the fine mesh (factor 1)
+# ramp-0.025pa-fine - 0.025 Pa on the fine mesh (factor 1)
 
 Prepared with the DSMC Setup Calculator
 (`/home/ubuntu/Desktop/DSMC-Calculator/dsmc_calc.py`, functions
@@ -6,20 +6,20 @@ Prepared with the DSMC Setup Calculator
 
 | quantity | value |
 |---|---|
-| pressure | 0.1 Pa |
-| number density n | 4.8286e+19 1/m^3 (T = 150 K) |
+| pressure | 0.025 Pa |
+| number density n | 1.2072e+19 1/m^3 (T = 150 K) |
 | VHS cross-section sigma | 6.7594e-19 m^2 |
-| mean free path lambda | 2.1665e-02 m |
+| mean free path lambda | 8.6658e-02 m |
 | mean thermal speed cbar | 282.033 m/s |
-| mean collision time tau | 7.6816e-05 s |
+| mean collision time tau | 3.0726e-04 s |
 | mesh | 116 000 x 1^2 = **116000 cells** |
 | cell size dx = (V/N)^(1/3) | 2.8254e-03 m |
-| dx / lambda | 0.13 |
-| dt collision limit f1*tau (f1 = 0.2) | 1.536e-05 s |
+| dx / lambda | 0.03 |
+| dt collision limit f1*tau (f1 = 0.2) | 6.145e-05 s |
 | dt transit limit f2*dx/(U+cbar) (f2 = 0.3) | 8.322e-07 s |
 | **dt used** | **8.322e-07 s** |
 | parcels | 2320000 (20 per cell) |
-| nEquivalentParticles | 5.4458e+10 |
+| nEquivalentParticles | 1.3614e+10 |
 
 Statistics: 20 parcels per cell.
 

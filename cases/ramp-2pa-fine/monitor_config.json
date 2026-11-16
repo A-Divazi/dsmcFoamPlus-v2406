@@ -1,0 +1,5 @@
+{
+  "threshold": 0.01,
+  "sections": [1.0, 2.0],
+  "massflow_write": false
+}

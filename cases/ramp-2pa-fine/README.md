@@ -1,4 +1,4 @@
-# num20-2pa-fine - 2 Pa on the fine mesh (factor 6)
+# ramp-2pa-fine - 2 Pa on the fine mesh (factor 6)
 
 Prepared with the DSMC Setup Calculator
 (`/home/ubuntu/Desktop/DSMC-Calculator/dsmc_calc.py`, functions

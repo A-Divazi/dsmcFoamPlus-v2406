@@ -18,7 +18,7 @@ application     dsmcFoamPlus;
 
 nTerminalOutputs 1;
 
-startFrom       latestTime;
+startFrom       startTime;
 
 startTime       0;
 
