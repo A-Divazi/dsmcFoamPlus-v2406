@@ -422,8 +422,17 @@ class MassFlowWorker(threading.Thread):
     def run(self):
         while True:
             tname = self.q.get()
+            res = None
             try:
-                res = compute_mass_flow(tname)
+                out = subprocess.run(
+                    [sys.executable, os.path.abspath(__file__), '--massflow',
+                     tname], cwd=CASEDIR, capture_output=True, text=True,
+                    timeout=1800).stdout.strip().splitlines()
+                line = out[-1] if out else ''
+                if line.startswith('{'):
+                    import json
+                    d = json.loads(line)
+                    res = (d['secs'], d['mdots'], d['net'])
             except Exception:
                 res = None
             self.done.put((tname, res))
@@ -821,6 +830,23 @@ def count_cells_state(tname):
     return (n, total) if n else (None, {})
 
 
+def _count_owner_cells(mdir):
+    """cell count of a polyMesh from its owner file (no polygon lists)."""
+    p = os.path.join(mdir, 'owner')
+    if not os.path.isfile(p):
+        return None
+    try:
+        import numpy as np
+        txt = open(p, errors='replace').read()
+        m = re.search(r'\n(\d+)\s*\n\(', txt)
+        body = txt[m.end():] if m else txt
+        body = body[:body.find(')')]
+        own = np.fromstring(body, dtype=np.int64, sep=' ')
+        return int(own.max()) + 1 if own.size else None
+    except Exception:
+        return None
+
+
 def count_cells_in_dir(d):
     f = os.path.join(d, 'cellLevel')
     if not os.path.isfile(f):
@@ -842,14 +868,8 @@ def count_cells_in_dir(d):
                 pass
     if not vals:
         mdir = mesh_dir_of(d)
-        if mdir:
-            try:
-                pts, faces, own, _nb = _poly_mesh(mdir)
-                n = max(own) + 1
-                return n, {0: n}
-            except Exception:
-                pass
-        return None, {}
+        n = _count_owner_cells(mdir) if mdir else None
+        return (n, {0: n}) if n else (None, {})
     counts = {}
     for v in vals:
         counts[v] = counts.get(v, 0) + 1
@@ -972,15 +992,79 @@ def load_state(tname):
     return pts, faces, own, nb, dirs
 
 
+def _mesh_arrays(mdir, np):
+    """(points, face->point indices, owner, neighbour) as numpy arrays.
+
+    Vectorised parse: the polyMesh files are read once and converted with
+    np.fromstring, so a 4-million-cell mesh costs a few hundred MB instead of
+    gigabytes of Python lists (the previous list-of-lists parser)."""
+    def _body(path):
+        txt = open(path, errors='replace').read()
+        m = re.search(r'\n(\d+)\s*\n\(', txt)
+        if not m:
+            raise RuntimeError('cannot parse ' + path)
+        return int(m.group(1)), txt[m.end():txt.rfind(')')]
+
+    npts, body = _body(os.path.join(mdir, 'points'))
+    pts = np.fromstring(body.replace('(', ' ').replace(')', ' '),
+                        dtype=float, sep=' ').reshape(-1, 3)
+
+    nf, body = _body(os.path.join(mdir, 'faces'))
+    flat = np.fromstring(body.replace('(', ' ').replace(')', ' '),
+                         dtype=np.int64, sep=' ')
+    if flat.size == 5 * nf:                       # all quads (hex mesh)
+        idx = flat.reshape(-1, 5)[:, 1:]
+    else:                                         # general polyMesh
+        rows, i = [], 0
+        while i < flat.size:
+            k = int(flat[i])
+            rows.append(flat[i + 1:i + 1 + k])
+            i += k + 1
+        idx = np.array(rows, dtype=np.int64)
+
+    _, body = _body(os.path.join(mdir, 'owner'))
+    own = np.fromstring(body.replace('(', ' ').replace(')', ' '),
+                        dtype=np.int64, sep=' ')
+    nb = np.full(nf, -1, dtype=np.int64)
+    pn = os.path.join(mdir, 'neighbour')
+    if os.path.isfile(pn):
+        _, body = _body(pn)
+        nvals = np.fromstring(body.replace('(', ' ').replace(')', ' '),
+                              dtype=np.int64, sep=' ')
+        nb[:nvals.size] = nvals
+    return pts, idx, own, nb
+
+
+def _cell_centres_np(pts, idx, own, np):
+    """cell centres (cx, cy) from the face->point indices (vectorised)."""
+    ncell = int(own.max()) + 1
+    k = idx.shape[1]
+    cx = np.zeros(ncell)
+    cy = np.zeros(ncell)
+    cnt = np.zeros(ncell)
+    # accumulate the face centroids onto the owner cells
+    for j in range(k):
+        np.add.at(cx, own, pts[idx[:, j], 0] / k)
+        np.add.at(cy, own, pts[idx[:, j], 1] / k)
+    np.add.at(cnt, own, 1.0)
+    cnt[cnt == 0] = 1.0
+    return cx / cnt, cy / cnt
+
+
 def render_field(plt, np, tname, out):
     """Mach-number contour of one written time directory (horizontal colorbar)."""
-    pts, faces, own, nb, dirs = load_state(tname)
-    x, y = _cell_centres(pts, faces, own, nb)
-    vals = _field_vals_multi(dirs, 'Ma_mix')
+    mdir = newest_mesh_dir(tname)
+    if not mdir:
+        raise RuntimeError('no polyMesh yet (run blockMesh / Allrun first)')
+    pts, idx, own, nb = _mesh_arrays(mdir, np)
+    cx, cy = _cell_centres_np(pts, idx, own, np)
+    vals = _field_vals_multi([os.path.join(CASEDIR, tname)
+                              if os.path.isdir(os.path.join(CASEDIR, tname)) else CASEDIR],
+                             'Ma_mix')
     if not vals:
         raise RuntimeError('no Ma_mix field in %s' % tname)
-    n = min(len(x), len(vals))
-    xs, ys, vs = np.array(x[:n]), np.array(y[:n]), np.array(vals[:n])
+    n = min(cx.size, len(vals))
+    xs, ys, vs = cx[:n], cy[:n], np.array(vals[:n], dtype=float)
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=100)
     try:
         art = ax.tricontourf(xs, ys, vs, levels=40, cmap='turbo')
@@ -998,33 +1082,59 @@ def render_field(plt, np, tname, out):
     plt.close(fig)
 
 
+def _nfaces(mdir):
+    """number of faces from the header of a polyMesh/faces file (cheap)."""
+    try:
+        with open(os.path.join(mdir, 'faces'), errors='replace') as f:
+            head = f.read(4096)
+        m = re.search(r'\n(\d+)\s*\n\(', head)
+        return int(m.group(1)) if m else 0
+    except Exception:
+        return 0
+
+
 def render_mesh(plt, np, LineCollection, tname, out):
-    """Black face wireframe of one written time directory."""
-    pts, faces, own, nb, dirs = load_state(tname)
-    n = max(own) + 1
-    maxlev = 0
-    lv = _field_vals_multi(dirs, 'cellLevel')
-    if lv:
-        try:
-            maxlev = max(int(v) for v in lv)
-        except Exception:
-            maxlev = 0
+    """Black face wireframe of one written time directory.
+
+    Vectorised (numpy) parse, and large meshes are subsampled (every k-th
+    face) so that rendering a multi-million-cell case stays in a few hundred
+    MB instead of gigabytes."""
+    mdir = newest_mesh_dir(tname)
+    if not mdir:
+        raise RuntimeError('no polyMesh yet (run blockMesh / Allrun first)')
+    pts, idx, own, nb = _mesh_arrays(mdir, np)
+    nf = idx.shape[0]
+    stride = max(1, nf // 200000)          # at most ~200k faces are drawn
+    P = pts[idx[::stride]]                 # (nf', k, 3)
+
+    k = P.shape[1]
     segs = []
-    for fp in faces:
-        ps = [pts[i] for i in fp]
-        for a in range(len(ps)):
-            b = (a + 1) % len(ps)
-            if abs(ps[a][2] - ps[b][2]) > 1e-12:
-                continue                    # skip through-thickness (z) edges
-            segs.append([(ps[a][0], ps[a][1]), (ps[b][0], ps[b][1])])
+    for j in range(k):
+        a = P[:, j]
+        b = P[:, (j + 1) % k]
+        keep = np.abs(a[:, 2] - b[:, 2]) < 1e-12      # in-plane edges only
+        if keep.any():
+            segs.append(np.stack([a[keep][:, :2], b[keep][:, :2]], axis=1))
+    segs = np.concatenate(segs) if segs else np.zeros((0, 2, 2))
+
+    maxlev = 0
+    d = os.path.join(CASEDIR, tname)
+    if os.path.isdir(d):
+        lv = _field_vals_multi([d], 'cellLevel')
+        if lv:
+            try:
+                maxlev = max(int(v) for v in lv)
+            except Exception:
+                maxlev = 0
     fig, ax = plt.subplots(figsize=(7.2, 4.4), dpi=100)
     ax.add_collection(LineCollection(segs, linewidths=0.25, colors='black'))
     ax.autoscale()
     ax.set_aspect('equal')
     ax.set_xlabel('x [m]')
     ax.set_ylabel('y [m]')
-    ax.set_title('mesh at t = %s s   (%d cells, %d faces, AMR level 0..%d)'
-                 % (tname, n, len(faces), maxlev))
+    ax.set_title('mesh at t = %s s   (%d faces%s, AMR level 0..%d)'
+                 % (tname, nf, '' if stride == 1 else ', every %dth drawn' % stride,
+                    maxlev))
     fig.tight_layout()
     fig.savefig(out)
     plt.close(fig)
@@ -1625,6 +1735,13 @@ class MonitorApp:
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--massflow':
+        import json
+        res = compute_mass_flow(sys.argv[2])
+        if res:
+            print(json.dumps({'secs': res[0], 'mdots': res[1], 'net': res[2]}))
+        return
+
     if len(sys.argv) > 1 and sys.argv[1] == '--render':
         # internal helper for the background renderer:
         #   monitor.py --render field|mesh <timeDir> <out.png>
