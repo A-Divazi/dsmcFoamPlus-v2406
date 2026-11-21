@@ -44,7 +44,9 @@ MASS = 66.3e-27           # argon [kg]
 DREF = 4.17e-10
 OMEGA = 0.81
 TREF = 298.15
-PARCEL_MAX = 9.0e6        # RAM budget of this machine
+FORCE = False             # overwrite cases that already contain results
+PPC = 20                  # particles per cell (DSMC calculator default)
+PARCEL_CAP = None         # e.g. 9.0e6 to fit a small machine (--cap)
 F1, F2 = 0.2, 0.3         # calculator safety factors
 RUNNERS = ('Allrun', 'Allcont', 'Allclean', 'Allreconstruct')
 
@@ -189,15 +191,22 @@ runApplication reconstructPar -no-lagrangian || \
 }
 
 
-# case directory, pressure [Pa], mesh refinement factor
+# source case directory, pressure [Pa], mesh refinement factor
+#   destination: ramp-<pressure>pa-fine  (see dst_name())
 SPEC = [
-    ('num20-2pa',                 2.0,    6),
-    ('num20-20particle-1pa',      1.0,    4),
-    ('num19.5-20particle-0.5pa',  0.5,    2),
-    ('num19',                     0.1,    1),
-    ('num18.5-20particle-0.05pa', 0.05,   1),
-    ('num18-20particle-0.01pa',   0.01,   1),
+    ('ramp-2pa-coarse',     2.0,   6),
+    ('ramp-1pa-coarse',     1.0,   4),
+    ('ramp-0.5pa-coarse',   0.5,   2),
+    ('ramp-0.1pa-coarse',   0.1,   1),
+    ('ramp-0.05pa-coarse',  0.05,  1),
+    ('ramp-0.05pa-coarse',  0.025, 1),   # same 116k mesh, lower pressure
+    ('ramp-0.01pa-coarse',  0.01,  1),
 ]
+
+
+def dst_name(P):
+    """ramp-<pressure>pa-fine, e.g. ramp-0.025pa-fine, ramp-2pa-fine."""
+    return 'ramp-%gpa-fine' % P
 
 
 def sigma(Tg):
@@ -239,13 +248,22 @@ def set_entry(path, pattern, value):
 
 def build(src_name, P, f, only=None):
     src = os.path.join(B, src_name)
-    dst = src + '-fine'
-    if only and only not in (src_name, os.path.basename(dst)):
+    dst = os.path.join(B, dst_name(P))
+    if only and only not in (src_name, os.path.basename(dst), ('%g' % P)):
         return None
     if not os.path.isdir(src):
         print('missing source case', src)
         return None
     if os.path.isdir(dst):
+        # never silently wipe a case that contains results
+        results = [x for x in os.listdir(dst)
+                   if re.match(r'^[0-9]+(\.[0-9]+)?$', x) and x != '0'
+                   and os.path.isdir(os.path.join(dst, x))]
+        if results and not FORCE:
+            print('   ! %s has %d written time directories - not overwritten '
+                  '(use --force, or update only the dictionaries)'
+                  % (os.path.basename(dst), len(results)))
+            return None
         shutil.rmtree(dst)
     os.makedirs(os.path.join(dst, 'system'))
     os.makedirs(os.path.join(dst, 'constant'))
@@ -259,7 +277,7 @@ def build(src_name, P, f, only=None):
         with open(os.path.join(dst, x), 'w') as fh:
             fh.write(RUNNER_FILES[x])
         os.chmod(os.path.join(dst, x), 0o755)
-    sp = os.path.join(B, 'monitor.py.new')
+    sp = os.path.join(B, 'monitor.py')
     if os.path.isfile(sp):
         shutil.copy2(sp, os.path.join(dst, 'monitor.py'))
     open(os.path.join(dst, 'monitor_config.json'), 'w').write(
@@ -281,9 +299,10 @@ def build(src_name, P, f, only=None):
     dt_trans = F2 * dx / (U + cb)
     dt = min(dt_coll, dt_trans)
 
-    want = 20 * cells
-    parcels = min(want, PARCEL_MAX)
-    capped = parcels < want
+    parcels = PPC * cells
+    capped = PARCEL_CAP is not None and parcels > PARCEL_CAP
+    if capped:
+        parcels = PARCEL_CAP
     nEq = n * V / parcels
 
     cd = os.path.join(dst, 'system', 'controlDict')
@@ -304,11 +323,16 @@ def build(src_name, P, f, only=None):
                lambda m: m.group(1) + '%.6e;' % n, s)
     open(init, 'w').write(s)
 
-    note = ('**Warning:** 20 parcels/cell needs %d parcels; only %d fit in the '
-            'RAM budget, so this case runs with %.1f parcels/cell. Lower the '
-            'mesh factor or use a bigger machine for better statistics.'
-            % (want, parcels, parcels / cells)) if capped else \
-           'Statistics: 20 parcels per cell.'
+    ram = 0.55 * parcels / 1e6 + 1.0 * cells / 1e6
+    note = ('**Statistics:** %g parcels per cell (DSMC calculator default).\n\n'
+            'Estimated memory for the initial parcel set: **~%.0f GB** '
+            '(0.55 GB per million parcels + ~1 GB per million cells) - run it on '
+            'a machine with that much RAM, or rebuild with a smaller mesh factor.'
+            % (parcels / cells, ram))
+    if capped:
+        note = ('**Warning:** requested %d parcels (%d/cell) but capped at %d '
+                '(--cap), i.e. %.1f parcels/cell.' % (PPC * cells, PPC, parcels,
+                                                       parcels / cells))
 
     open(os.path.join(dst, 'README.md'), 'w').write('''# %s - %g Pa on the fine mesh (factor %d)
 
@@ -345,7 +369,7 @@ The mesh is graded in y (simpleGrading 10/-10): dx above is the bulk
 equivalent cell size used by the calculator; the near-wall cells are smaller.
 ''' % (os.path.basename(dst), P, f, P, n, T, s_T, lbd, cb, tau, f, cells, dx,
        dx / lbd, F1, dt_coll, F2, dt_trans, dt, parcels,
-       'capped at the RAM budget PARCEL_MAX' if capped else '20 per cell',
+       '%g per cell' % (parcels / cells),
        nEq, note))
 
     return dict(case=os.path.basename(dst), P=P, f=f, cells=cells, dx=dx,
@@ -354,10 +378,17 @@ equivalent cell size used by the calculator; the near-wall cells are smaller.
 
 
 def main():
-    only = sys.argv[1] if len(sys.argv) > 1 else None
+    global PPC, PARCEL_CAP, FORCE
+    argv = sys.argv[1:]
+    FORCE = '--force' in argv
+    if '--ppc' in argv:
+        PPC = float(argv[argv.index('--ppc') + 1])
+    if '--cap' in argv:
+        PARCEL_CAP = float(argv[argv.index('--cap') + 1])
+    only = argv[0] if argv and not argv[0].startswith('--') else None
     rows = []
     for src, P, f in SPEC:
-        print('building %s-fine (%g Pa, factor %d)' % (src, P, f))
+        print('building %s  (from %s, %g Pa, factor %d)' % (dst_name(P), src, P, f))
         r = build(src, P, f, only)
         if r:
             rows.append(r)

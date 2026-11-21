@@ -174,15 +174,21 @@ terms.
 Argon, T = 150 K, U = 736.5 m/s (Mach 3.23), V = 2.6165e-3 m3 (3.5 x 1 x 0.001 m),
 116 000-cell base mesh refined by f in x and y so that dx <= lambda.
 
-| case | P [Pa] | f | cells | dx [m] | dx/lambda | lambda [m] | tau [s] | dt [s] | parcels |
-|---|---|---|---|---|---|---|---|---|---|
-| ramp-2pa-fine    | 2     | 6 | 4 176 000 | 8.56e-4 | 0.79 | 1.08e-3 | 3.84e-6 | 2.52e-7 | 9.0e6 (2.2/cell, RAM cap) |
-| ramp-1pa-fine    | 1     | 4 | 1 856 000 | 1.12e-3 | 0.52 | 2.17e-3 | 7.68e-6 | 3.30e-7 | 9.0e6 (4.8/cell, RAM cap) |
-| ramp-0.5pa-fine  | 0.5   | 2 |   464 000 | 1.78e-3 | 0.41 | 4.33e-3 | 1.54e-5 | 5.24e-7 | 9.0e6 (19.4/cell, RAM cap) |
-| ramp-0.1pa-fine  | 0.1   | 1 |   116 000 | 2.83e-3 | 0.13 | 2.17e-2 | 7.68e-5 | 8.32e-7 | 2.32e6 (20/cell) |
-| ramp-0.05pa-fine | 0.05  | 1 |   116 000 | 2.83e-3 | 0.07 | 4.33e-2 | 1.54e-4 | 8.32e-7 | 2.32e6 (20/cell) |
-| ramp-0.025pa-fine| 0.025 | 1 |   116 000 | 2.83e-3 | 0.03 | 8.67e-2 | 3.07e-4 | 8.32e-7 | 2.32e6 (20/cell) |
-| ramp-0.01pa-fine | 0.01  | 1 |   116 000 | 2.83e-3 | 0.01 | 2.17e-1 | 7.68e-4 | 8.32e-7 | 2.32e6 (20/cell) |
+| case | P [Pa] | f | cells | dx [m] | dx/lambda | lambda [m] | tau [s] | dt [s] | parcels (20/cell) | RAM |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ramp-2pa-fine    | 2     | 6 | 4 176 000 | 8.56e-4 | 0.79 | 1.08e-3 | 3.84e-6 | 2.52e-7 | 83 520 000 | ~50 GB |
+| ramp-1pa-fine    | 1     | 4 | 1 856 000 | 1.12e-3 | 0.52 | 2.17e-3 | 7.68e-6 | 3.30e-7 | 37 120 000 | ~22 GB |
+| ramp-0.5pa-fine  | 0.5   | 2 |   464 000 | 1.78e-3 | 0.41 | 4.33e-3 | 1.54e-5 | 5.24e-7 |  9 280 000 | ~6 GB |
+| ramp-0.1pa-fine  | 0.1   | 1 |   116 000 | 2.83e-3 | 0.13 | 2.17e-2 | 7.68e-5 | 8.32e-7 |  2 320 000 | ~1 GB |
+| ramp-0.05pa-fine | 0.05  | 1 |   116 000 | 2.83e-3 | 0.07 | 4.33e-2 | 1.54e-4 | 8.32e-7 |  2 320 000 | ~1 GB |
+| ramp-0.025pa-fine| 0.025 | 1 |   116 000 | 2.83e-3 | 0.03 | 8.67e-2 | 3.07e-4 | 8.32e-7 |  2 320 000 | ~1 GB |
+| ramp-0.01pa-fine | 0.01  | 1 |   116 000 | 2.83e-3 | 0.01 | 2.17e-1 | 7.68e-4 | 8.32e-7 |  2 320 000 | ~1 GB |
+
+Every case uses exactly **20 particles per cell** (the DSMC calculator
+default): `nEquivalentParticles = n·V/(20·Ncells)`. The memory column is the
+estimated peak for the initial parcel set (0.55 GB per million parcels +
+~1 GB per million cells); `scripts/make-fine-cases.py --cap <N>` rebuilds a
+case with fewer parcels if the target machine is smaller.
 
 `dt` is the smaller of the collision limit (0.2 tau) and the transit limit
 (0.3 dx/(U+cbar)); on the fine meshes the transit limit dominates. The mesh is

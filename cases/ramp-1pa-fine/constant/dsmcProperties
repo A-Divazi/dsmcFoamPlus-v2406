@@ -17,7 +17,7 @@ FoamFile
 // General Properties
 // ~~~~~~~~~~~~~~~~~~
 
-nEquivalentParticles            1.403795e+11;
+nEquivalentParticles            3.403598e+10;
 
 chargedParticles                false;
 

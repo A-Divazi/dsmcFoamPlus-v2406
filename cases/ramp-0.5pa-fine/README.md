@@ -18,10 +18,12 @@ Prepared with the DSMC Setup Calculator
 | dt collision limit f1*tau (f1 = 0.2) | 3.073e-06 s |
 | dt transit limit f2*dx/(U+cbar) (f2 = 0.3) | 5.243e-07 s |
 | **dt used** | **5.243e-07 s** |
-| parcels | 9000000 (capped at the RAM budget PARCEL_MAX) |
-| nEquivalentParticles | 7.0190e+10 |
+| parcels | 9280000 (20 per cell) |
+| nEquivalentParticles | 6.8072e+10 |
 
-**Warning:** 20 parcels/cell needs 9280000 parcels; only 9000000 fit in the RAM budget, so this case runs with 19.4 parcels/cell. Lower the mesh factor or use a bigger machine for better statistics.
+**Statistics:** 20 parcels per cell (DSMC calculator default).
+
+Estimated memory for the initial parcel set: **~6 GB** (0.55 GB per million parcels + ~1 GB per million cells) - run it on a machine with that much RAM, or rebuild with a smaller mesh factor.
 
 Run:
 
